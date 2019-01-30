@@ -1,28 +1,4 @@
-// g2o - General Graph Optimization
-// Copyright (C) 2011 Kurt Konolige
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-// * Redistributions of source code must retain the above copyright notice,
-//   this list of conditions and the following disclaimer.
-// * Redistributions in binary form must reproduce the above copyright
-//   notice, this list of conditions and the following disclaimer in the
-//   documentation and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-// IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-// TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
-// TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 #include <Eigen/StdVector>
 #include <random>
@@ -53,23 +29,15 @@ using namespace g2o;
     static default_random_engine gen_real;
     static default_random_engine gen_int;
   public:
-    static int uniform(int from, int to);
 
     static double uniform();
-
-    static double gaussian(double sigma);
   };
 
 
   default_random_engine Sample::gen_real;
   default_random_engine Sample::gen_int;
 
-  int Sample::uniform(int from, int to)
-  {
-    uniform_int_distribution<int> unif(from, to);
-    int sam = unif(gen_int);
-    return  sam;
-  }
+
 
   double Sample::uniform()
   {
@@ -78,28 +46,19 @@ using namespace g2o;
     return  sam;
   }
 
-  double Sample::gaussian(double sigma)
-  {
-    std::normal_distribution<double> gauss(0.0, sigma);
-    double sam = gauss(gen_real);
-    return  sam;
-  }
 
 
 //
-// set up simulated system with noise, optimize it
+// set up simulated system.
 //
 
 int main()
 {
-  double euc_noise = 0.01;       // noise in position, m
-  //  double outlier_ratio = 0.1;
 
 
   SparseOptimizer optimizer;
   optimizer.setVerbose(false);
 
-  // variable-size block solver
   g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(
     g2o::make_unique<BlockSolverX>(g2o::make_unique<LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>>()));
 
@@ -118,15 +77,13 @@ int main()
   int vertex_id = 0;
   for (size_t i=0; i<2; ++i)
   {
-    // set up rotation and translation for this node
+    // set up rotation, translation and scale for this node
     Vector3d t(0,0,0);
     g2o::Quaternion q;
     q.setIdentity();
     int scale = 1;
 
-    Sim3 cam(q, t, scale); // camera pose
-    //cam = q;
-    //cam.translation() = t;
+    Sim3 cam(q, t, scale); //initiate a sim3 from the above set params 
 
     // set up node
     VertexSim3 *vc = new VertexSim3();
@@ -134,9 +91,9 @@ int main()
 
     vc->setId(vertex_id);      // vertex id
 
-    //cerr << t.transpose() << " | " << q.coeffs().transpose() << endl;
+    
 
-    // set first cam pose fixed
+    // set first sim fixed
     if (i==0)
       vc->setFixed(true);
 
@@ -158,6 +115,9 @@ int main()
     // calculate the relative 3D position of the point
     Vector3d pt0,pt1;
 
+
+    //sim transforming the input pointcloud
+
     Vector3d vic = Vector3d(10,11,12);
     Matrix3 m;
     m << 0, -1, 0 , 1 ,0 ,0, 0, 0, 1; 
@@ -165,21 +125,10 @@ int main()
     pt0 = 2*m*(vp0->estimate().inverse() * true_points[i]) + vic;
     pt1 = vp1->estimate().inverse() * true_points[i];
 
-    // add in noise
-    pt0 += Vector3d(Sample::gaussian(euc_noise ),
-                    Sample::gaussian(euc_noise ),
-                    Sample::gaussian(euc_noise ));
 
-    pt1 += Vector3d(Sample::gaussian(euc_noise ),
-                    Sample::gaussian(euc_noise ),
-                    Sample::gaussian(euc_noise ));
-
-    // form edge, with normals in varioius positions
+    // form edge
     Vector3d nm0, nm1;
-    //nm0 << 0, i, 1;
-    //nm1 << 0, i, 1;
-    //nm0.normalize();
-    //nm1.normalize();
+
 
     Edge_V_V_SIM * e           // new edge with correct cohort for caching
         = new Edge_V_V_SIM(); 
@@ -188,44 +137,42 @@ int main()
 
     e->setVertex(1, vp1);      // second viewpoint
 
+
+    //a data structure to calculate the error
     EdgeSIM meas;
     meas.pos0 = pt0;
     meas.pos1 = pt1;
-    //meas.normal0 = nm0;
-    //meas.normal1 = nm1;
 
     e->setMeasurement(meas);
-    //        e->inverseMeasurement().pos() = -kp;
+    
     
     meas = e->measurement();
-    // use this for point-plane
-    //e->information() = meas.prec0(0.01);
+    e->information().setIdentity();
 
-    // use this for point-point 
-        e->information().setIdentity();
+
+
+
+    //trying out robust kernel with huber functions
+
 
     //e->setRobustKernel(true);
     //e->setHuberWidth(0.01);
     //RobustKernel* rbk;
     //rbk->setDelta(.01);
     //e->setRobustKernel(rbk);
-    g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-    e->setRobustKernel(rk);
+    //g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+    //e->setRobustKernel(rk);
     optimizer.addEdge(e);
   }
 
-  // move second cam off of its true position
   VertexSim3* vc = 
     dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
   Sim3 cam = vc->estimate();
 
-  //cam.setTrans(Vector3d(0,0,0.2));
-  //int scale = 2;
-
-  //cam.setScale(scale);
-
-  cout<< cam<<endl;
-  //vc->setEstimate(cam);
+  
+  //printing sim before calculations
+  //cout<< cam<<endl;
+  
 
   optimizer.initializeOptimization();
   optimizer.computeActiveErrors();
@@ -233,27 +180,9 @@ int main()
 
   optimizer.setVerbose(true);
 
-
-
-
-
-
-
-
-
-
-
-
-
   optimizer.optimize(20);
-/*
-  cout << endl << "Second vertex should be near 0,0,1" << endl;
-  cout <<  dynamic_cast<VertexSim3*>(optimizer.vertices().find(0)->second)
-    ->estimate().translation().transpose() << endl;
-  cout <<  dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second)
-    ->estimate().translation().transpose() << endl;
-*/
 
+  //priting sim after calculations
   VertexSim3* temp_ver = dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
   Sim3 temp_sim = temp_ver->estimate();
   cout<<temp_sim<<endl;
