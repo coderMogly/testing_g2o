@@ -260,7 +260,18 @@ namespace g2o
         return ret;
       }
 
-      //Anirudh code
+      
+
+
+
+
+
+
+
+
+
+      //Modification start
+      //Author Anirudh Yadav
 
 
       Vector3 operator *(const Vector3& other) const {
@@ -286,7 +297,18 @@ namespace g2o
         s = scale;
       }
 
-      //Anirudh code end
+      
+      //Author Anirudh Yadav 
+      //Modification End 
+
+
+
+
+
+
+
+
+
 
       Sim3& operator *=(const Sim3& other){
         Sim3 ret=(*this)*other;

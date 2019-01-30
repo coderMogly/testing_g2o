@@ -1,3 +1,8 @@
+/*Author Anirudh Yadav
+  Similarity transformation identification demo
+
+*/
+
 
 
 #include <Eigen/StdVector>

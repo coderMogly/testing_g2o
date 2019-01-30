@@ -121,7 +121,8 @@ class G2O_TYPES_SIM3_API VertexSim3Expmap : public BaseVertex<7, Sim3>
 
 
 
-//anirudh modifications start
+//Modifications Start
+//Author Anirudh Yadav
 class G2O_TYPES_SIM3_API VertexSim3 : public BaseVertex<7, Sim3>
 {
  public:
@@ -200,7 +201,8 @@ class G2O_TYPES_SIM3_API Edge_V_V_SIM : public  BaseBinaryEdge<3, EdgeSIM, Verte
 
 
 
-//Anirudh modifications end
+//Author Anirudh Yadav
+//Modifications End
 
 
 

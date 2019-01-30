@@ -222,7 +222,8 @@ bool EdgeInverseSim3ProjectXYZ::write(std::ostream &os) const {
 
 
 
-//Anirudh Modifications
+//Autor Anirudh Yadav 
+//Modifications Start
 
 VertexSim3::VertexSim3() : BaseVertex<7, Sim3>()
 {}
@@ -307,7 +308,8 @@ bool Edge_V_V_SIM::write(std::ostream& os) const
 
 
 
-//Anirudh Modifications end
+//Autor Anirudh Yadav 
+//Modifications End
 
 
 
