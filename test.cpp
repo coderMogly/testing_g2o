@@ -10,7 +10,7 @@ public:
   Eigen::Quaterniond quat();
   Eigen::Vector3d trans();
   float scale();
-  Sim_trans multiply(Sim_trans &other);
+  //Sim_trans multiply(Sim_trans &other);
   void setquat();
   void settrans();
   void setscale();
@@ -19,14 +19,14 @@ public:
 protected:
   Eigen::Quaterniond q;
   Eigen::Vector3d tran;
-  float scale;
+  float sc;
 
 };
 
 Sim_trans::Sim_trans(Eigen::Quaterniond _q, Eigen::Vector3d _tran, float _scale){
   q = _q;
   tran = _tran;
-  scale = _scale;
+  sc = _scale;
 }
 
 Eigen::Quaterniond Sim_trans::quat(){
@@ -38,7 +38,7 @@ Eigen::Vector3d Sim_trans::trans(){
 }
 
 float Sim_trans::scale(){
-  return scale;
+  return sc;
 }
 
 void Sim_trans::setquat(Eigen::Quaterniond &_q){
@@ -50,16 +50,16 @@ void Sim_trans::settrans(Eigen::Vector3d &_tran){
 }
 
 void Sim_trans::setscale(float &_scale){
-  scale = _scale
+  sc = _scale
 }
 
-Sim_trans Sim_trans::multiply(){
-  Sim_trans ret;
-  ret.setquat() = ;
-  ret.settrans() = ;
-  ret.scale() = ;
-  return ret;    
-}
+//Sim_trans Sim_trans::multiply(Sim_trans &other){
+//  Sim_trans ret;
+//  ret.setquat(((q.normalized().toRotationMatrix())*(other.quat().normalized().toRotationMatrix())));
+//  ret.settrans();
+//  ret.scale();
+//  return ret;    
+//}
 
 
 
@@ -226,7 +226,7 @@ int main ()
     std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);    
     temp = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
-    temp = temp * si;
+    //temp = temp * si;
   }
 
   //final transformation out is temp

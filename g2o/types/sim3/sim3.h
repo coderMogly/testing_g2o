@@ -297,6 +297,21 @@ namespace g2o
         s = scale;
       }
 
+      Quaternion getquat(){
+        return r;
+      }
+
+      Vector3 gettrans(){
+        return t;
+      }
+      number_t getscale(){
+        return s;
+      };
+
+
+
+
+
       
       //Author Anirudh Yadav 
       //Modification End 

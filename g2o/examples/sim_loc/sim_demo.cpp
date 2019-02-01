@@ -9,6 +9,9 @@
 #include <random>
 #include <iostream>
 #include <stdint.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/kdtree/kdtree_flann.h>          
 
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -170,9 +173,9 @@ int main()
     optimizer.addEdge(e);
   }
 
-  VertexSim3* vc = 
-    dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
-  Sim3 cam = vc->estimate();
+  //VertexSim3* vc = 
+  //  dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
+  //Sim3 cam = vc->estimate();
 
   
   //printing sim before calculations
