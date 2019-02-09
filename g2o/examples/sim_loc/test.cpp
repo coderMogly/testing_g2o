@@ -200,7 +200,7 @@ std::vector<std::pair<int, int>> findCorrespondences(pcl::KdTreeFLANN<pcl::Point
     //cout<<pointNKNSquaredDistance[0]<<endl;
     
     if(pointNKNSquaredDistance[0] <= th){
-      ret.push_back(std::make_pair(i,pointIdxNKNSearch[0]));
+      ret.push_back(std::make_pair(pointIdxNKNSearch[0],i));
     } 
     updateTH_max(th_max, pointNKNSquaredDistance[0]);
     updateTH_min(th_min, pointNKNSquaredDistance[0]);
@@ -249,15 +249,16 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
     vertex_id++;                
   }
 
-
-  for (size_t i=0; i<corres_set.size(); ++i)
+//	cout<<"entering for loop"<<endl;
+  for (size_t i=0; i<corres_set.size(); i++)
   {
+	//cout<<0<<endl;
     // get two poses
     VertexSim3* vp0 = 
       dynamic_cast<VertexSim3*>(optimizer.vertices().find(0)->second);
     VertexSim3* vp1 = 
       dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
-
+    //cout<<1<<endl;
     // calculate the relative 3D position of the point
     Vector3d pt0,pt1;
 
@@ -271,18 +272,20 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
     //pt0 = 2*m*(vp0->estimate().inverse() * true_points[i]) + vic;
     //pt1 = vp1->estimate().inverse() * true_points[i];
 
-
+    //cout<<3<<endl;
     pt0[0] = globalPCL->points[corres_set[i].first].x;
     pt0[1] = globalPCL->points[corres_set[i].first].y;
     pt0[2] = globalPCL->points[corres_set[i].first].z;
+
+    //cout<<4<<endl;
 
     pt1[0] = localPCL->points[corres_set[i].second].x;
     pt1[1] = localPCL->points[corres_set[i].second].y;
     pt1[2] = localPCL->points[corres_set[i].second].z; 
 
-    pt0 = 2*m*pt0 + vic;
+    pt0 = m*pt0 + vic;
 
-
+    //cout<<5<<endl;
 
     // form edge
     Vector3d nm0, nm1;
@@ -295,7 +298,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
     e->setVertex(1, vp1);      // second viewpoint
 
-
+    //cout<<6<<endl;
     //a data structure to calculate the error
     EdgeSIM meas;
     meas.pos0 = pt0;
@@ -325,7 +328,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
   }
 
-
+	cout<<"done for loop"<<endl;
 
   //VertexSim3* vc = 
     //dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
@@ -342,7 +345,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
   optimizer.setVerbose(true);
 
-  optimizer.optimize(10);
+  optimizer.optimize(50);
 
   //priting sim after calculations
   VertexSim3* temp_ver = dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
@@ -357,6 +360,10 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
 }
 
+float updateTH(const float &th_max, const float &th_min, const float &iter, int k){
+	return(th_max - (th_max-th_min)*k/iter);
+}
+
 
 
 
@@ -368,7 +375,7 @@ int main ()
   float th = 0;
   float th_max = 0;
   float th_min = 0;
-  float iter = 3;
+  float iter = 10;
   g2o::Quaternion q;
   q.setIdentity();
   Eigen::Vector3d tran(0,0,0);
@@ -383,12 +390,12 @@ int main ()
 
 
   //enter local pcd filename here
-  std::string lo_filename = "./localPCD.pcd";
+  std::string lo_filename = "./globalPCD.pcd";
   pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL = loadPCL(lo_filename);
 
   //transform local pointcloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr temp_transformed_localPCL = transform_PCL(localPCL, si);
-
+//	cout<<"transform 1"<<endl;
   //cout<<globalPCL->points[0]<<endl<<temp_transformed_localPCL->points[0]<<endl<<localPCL->points[0]<<endl;
 
 
@@ -398,22 +405,26 @@ int main ()
   th_max = th;
   th_min = th;
   //cout<<th<<endl;
+//	cout<<"estimated TH"<<endl;
 
   //starting the Iterative process
   Sim3 temp = si;
   for(int j =0; j<iter; j++){
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);
+//	cout<<"entered loop"<<endl;
     std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
     cout<<corres_set.size()<<endl;
 
     //pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);    
     Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
+  	//std::cout<<temp1<<std::endl;
     temp = temp1 * temp;
+    th = updateTH(th_max, th_min, iter, j+1);
 
-    cout<<"for loop done"<<endl<<endl;
+//    cout<<"for loop done"<<endl<<endl;
 
   }
-
+  cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
   std::cout<<temp<<std::endl;
 
   //final transformation out is temp
