@@ -134,6 +134,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadPCL(std::string filename){
             << cloud->width * cloud->height
             << " data points from test_pcd.pcd with the following fields: "
             << std::endl;
+
+
+  for (size_t i = 0; i < cloud->points.size (); ++i)
+  {
+    cout<<filename<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
+  }
   return cloud;
   
 }
@@ -158,23 +164,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr transform_PCL(pcl::PointCloud<pcl::PointXYZ>
 
 }
 
-float InitialTHguess(pcl::KdTreeFLANN<pcl::PointXYZ> &kdtree, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
-  float th = 0;
-  for (size_t i = 0; i < cloud->points.size(); ++i)
-  {
-    pcl::PointXYZ searchPoint = cloud->points[i];
-    int K = 1;
-    std::vector<int> pointIdxNKNSearch(K);
-    std::vector<float> pointNKNSquaredDistance(K);
-    kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
-    //cout<<pointIdxNKNSearch[0]<<endl;
-    if(pointNKNSquaredDistance[0] > th){
-      th = pointNKNSquaredDistance[0];
-    }
-  }
 
-  return th;
-}
+
 
 void updateTH_max(float &th_max, float temp){
   if(th_max<temp){
@@ -187,6 +178,34 @@ void updateTH_min(float &th_min, float temp){
     th_min = temp;    
   }
 }
+
+
+
+
+void InitialTHguess(pcl::KdTreeFLANN<pcl::PointXYZ> &kdtree, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float &th, float &th_max, float &th_min){
+  th = 0;
+  th_max = 0;
+  th_min = 100000000000;
+  for (size_t i = 0; i < cloud->points.size(); ++i)
+  {
+    pcl::PointXYZ searchPoint = cloud->points[i];
+    int K = 1;
+    std::vector<int> pointIdxNKNSearch(K);
+    std::vector<float> pointNKNSquaredDistance(K);
+    kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+    //cout<<pointIdxNKNSearch[0]<<endl;
+    if(pointNKNSquaredDistance[0] > th){
+      th = pointNKNSquaredDistance[0];
+    }
+    updateTH_max(th_max, pointNKNSquaredDistance[0]);
+    updateTH_min(th_min, pointNKNSquaredDistance[0]);
+  }
+
+  //cout<<"th "<<th<<endl<<"th_max "<<th_max<<endl<<"th_min "<<th_min<<endl;
+
+  //return th;
+}
+
 
 std::vector<std::pair<int, int>> findCorrespondences(pcl::KdTreeFLANN<pcl::PointXYZ> &kdtree, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float &th, float &th_max, float &th_min){
   std::vector<std::pair<int, int>> ret;
@@ -204,6 +223,7 @@ std::vector<std::pair<int, int>> findCorrespondences(pcl::KdTreeFLANN<pcl::Point
     } 
     updateTH_max(th_max, pointNKNSquaredDistance[0]);
     updateTH_min(th_min, pointNKNSquaredDistance[0]);
+    //cout<<"  th :"<<th<<endl<<"  th_max :"<<th_max<<endl<<"  th_min :"<<th_min<<"  dist :"<<pointNKNSquaredDistance[0]<<"  index  :"<<pointIdxNKNSearch[0]<<endl<<endl<<endl;
   }
   return ret;
 }
@@ -265,9 +285,9 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
     //sim transforming the input pointcloud
 
-    Vector3d vic = Vector3d(10,11,12);
-    Matrix3 m;
-    m << 0, -1, 0 , 1 ,0 ,0, 0, 0, 1; 
+    //Vector3d vic = Vector3d(0,0,0);
+    //Matrix3 m;
+    //m << 0, -1, 0 , 1 ,0 ,0, 0, 0, 1; 
 
     //pt0 = 2*m*(vp0->estimate().inverse() * true_points[i]) + vic;
     //pt1 = vp1->estimate().inverse() * true_points[i];
@@ -283,7 +303,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
     pt1[1] = localPCL->points[corres_set[i].second].y;
     pt1[2] = localPCL->points[corres_set[i].second].z; 
 
-    pt0 = m*pt0 + vic;
+    //pt0 = m*pt0 + vic;
 
     //cout<<5<<endl;
 
@@ -328,7 +348,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
   }
 
-	cout<<"done for loop"<<endl;
+//	cout<<"done for loop"<<endl;
 
   //VertexSim3* vc = 
     //dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
@@ -375,7 +395,7 @@ int main ()
   float th = 0;
   float th_max = 0;
   float th_min = 0;
-  float iter = 10;
+  float iter = 1;
   g2o::Quaternion q;
   q.setIdentity();
   Eigen::Vector3d tran(0,0,0);
@@ -390,7 +410,7 @@ int main ()
 
 
   //enter local pcd filename here
-  std::string lo_filename = "./globalPCD.pcd";
+  std::string lo_filename = "./localPCD.pcd";
   pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL = loadPCL(lo_filename);
 
   //transform local pointcloud
@@ -401,11 +421,10 @@ int main ()
 
 
   //estimating initial threshold guess
-  th = InitialTHguess(globalKDTree, temp_transformed_localPCL);
-  th_max = th;
-  th_min = th;
+  InitialTHguess(globalKDTree, temp_transformed_localPCL, th, th_max, th_min);
   //cout<<th<<endl;
 //	cout<<"estimated TH"<<endl;
+  	//cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
 
   //starting the Iterative process
   Sim3 temp = si;
@@ -420,11 +439,12 @@ int main ()
   	//std::cout<<temp1<<std::endl;
     temp = temp1 * temp;
     th = updateTH(th_max, th_min, iter, j+1);
+  	//cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
+    
 
 //    cout<<"for loop done"<<endl<<endl;
 
   }
-  cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
   std::cout<<temp<<std::endl;
 
   //final transformation out is temp
