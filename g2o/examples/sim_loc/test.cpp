@@ -136,10 +136,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadPCL(std::string filename){
             << std::endl;
 
 
-  for (size_t i = 0; i < cloud->points.size (); ++i)
-  {
-    cout<<filename<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
-  }
+  //for (size_t i = 0; i < cloud->points.size (); ++i)
+  //{
+  //  cout<<filename<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
+  //}
   return cloud;
   
 }
@@ -385,6 +385,13 @@ float updateTH(const float &th_max, const float &th_min, const float &iter, int 
 }
 
 
+void printPCD(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+	for (size_t i = 0; i < cloud->points.size (); ++i)
+  	{
+    	cout<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
+  	}
+}
+
 
 
 
@@ -398,7 +405,7 @@ int main ()
   float iter = 1;
   g2o::Quaternion q;
   q.setIdentity();
-  Eigen::Vector3d tran(0,0,0);
+  Eigen::Vector3d tran(0.5,0,-4);
   float scale = 1;
   Sim3 si(q, tran, scale);
 
@@ -415,6 +422,8 @@ int main ()
 
   //transform local pointcloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr temp_transformed_localPCL = transform_PCL(localPCL, si);
+
+  printPCD(temp_transformed_localPCL);
 //	cout<<"transform 1"<<endl;
   //cout<<globalPCL->points[0]<<endl<<temp_transformed_localPCL->points[0]<<endl<<localPCL->points[0]<<endl;
 
@@ -431,14 +440,14 @@ int main ()
   for(int j =0; j<iter; j++){
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);
 //	cout<<"entered loop"<<endl;
-    std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
-    cout<<corres_set.size()<<endl;
+    //std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
+    //cout<<corres_set.size()<<endl;
 
     //pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);    
-    Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
+    //Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
   	//std::cout<<temp1<<std::endl;
-    temp = temp1 * temp;
-    th = updateTH(th_max, th_min, iter, j+1);
+    //temp = temp1 * temp;
+    //th = updateTH(th_max, th_min, iter, j+1);
   	//cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
     
 
