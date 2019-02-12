@@ -402,10 +402,10 @@ int main ()
   float th = 0;
   float th_max = 0;
   float th_min = 0;
-  float iter = 1;
+  float iter = 2;
   g2o::Quaternion q;
   q.setIdentity();
-  Eigen::Vector3d tran(0.5,0,-4);
+  Eigen::Vector3d tran(0,0,4);
   float scale = 1;
   Sim3 si(q, tran, scale);
 
@@ -440,21 +440,21 @@ int main ()
   for(int j =0; j<iter; j++){
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);
 //	cout<<"entered loop"<<endl;
-    //std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
-    //cout<<corres_set.size()<<endl;
+    std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
+    cout<<corres_set.size()<<endl;
 
     //pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);    
-    //Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
-  	//std::cout<<temp1<<std::endl;
-    //temp = temp1 * temp;
-    //th = updateTH(th_max, th_min, iter, j+1);
+    Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
+  	std::cout<<temp1<<std::endl;
+    temp = temp * temp1;
+    th = updateTH(th_max, th_min, iter, j+1);
   	//cout<<th_max<<endl<<th_min<<endl<<th<<endl<<endl;
     
 
 //    cout<<"for loop done"<<endl<<endl;
 
+  	std::cout<<temp<<std::endl;
   }
-  std::cout<<temp<<std::endl;
 
   //final transformation out is temp
 
