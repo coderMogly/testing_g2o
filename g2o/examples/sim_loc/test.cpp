@@ -10,7 +10,8 @@
 #include <stdint.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-#include <pcl/kdtree/kdtree_flann.h>          
+#include <pcl/kdtree/kdtree_flann.h>   
+#include <pcl/common/transforms.h>       
 
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -95,12 +96,12 @@ void Sim_trans::setscale(float &_scale){
 */
 
 
-class VoxelData{
+/*class VoxelData{
 	Eigen::Matrix3d matK;
 	Eigen::Vector3d sigma;
 	int numPoints;
 	pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf* leafPTR;
-};
+};*/
 
 
 
@@ -371,7 +372,7 @@ Sim3 findSimilarityTrans(pcl::PointCloud<pcl::PointXYZ>::Ptr globalPCL, pcl::Poi
 
   optimizer.setVerbose(true);
 
-  optimizer.optimize(50);
+  optimizer.optimize(5);
 
   //priting sim after calculations
   VertexSim3* temp_ver = dynamic_cast<VertexSim3*>(optimizer.vertices().find(1)->second);
@@ -397,7 +398,7 @@ void printPCD(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
     	cout<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
   	}
 }
-
+/*
 
 void doPCA(std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf> &leaves, std::vector<VoxelData> &data){
 	std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf>::iterator it;
@@ -481,7 +482,7 @@ RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pa
 }
 
 
-
+*/
 
 
 int main ()
@@ -490,7 +491,7 @@ int main ()
   float th = 0;
   float th_max = 0;
   float th_min = 0;
-  float iter = 1;
+  float iter = 100;
   g2o::Quaternion q;
   q.setIdentity();
   Eigen::Vector3d tran(0,0,0);
@@ -508,19 +509,44 @@ int main ()
   std::string lo_filename = "./localPCD.pcd";
   pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL = loadPCL(lo_filename);
 
+/*
+  Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
+  transform_1(0,0) = 0.0075;
+  transform_1(0,1) = 0.0148;
+  transform_1(0,2) = 1;
+  transform_1(1,0) = -1;
+  transform_1(1,1) = 0.00072;
+  transform_1(1,2) = 0.0075;
+  transform_1(2,0) = 0;
+  transform_1(2,1) = -1;
+  transform_1(2,2) = 0.0148;
+  transform_1(0,3) = 0.27;
+  transform_1(1,3) = -0.001;
+  transform_1(2,3) = -0.07;
+  transform_1(3,0) = 0;
+  transform_1(3,1) = 0;
+  transform_1(3,2) = 0;
+  transform_1(3,3) = 1;
 
+  pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL(new pcl::PointCloud<pcl::PointXYZ>());
+
+  pcl::transformPointCloud(*localPCL_1, *localPCL, transform_1); 
+
+  pcl::io::savePCDFileASCII ("test_pcd.pcd", *localPCL);
+
+*/
   //voxelize the pointcloud
-  pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>> VGC;
-  VGC.setInputCloud (globalPCL);
-  VGC.setLeafSize (0.01f, 0.01f, 0.01f);
-  VGC.filter(*filtered_globalPCL);
-  std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf> leaves = VGC.getLeaves();
-  std::vector<VoxelData> data;
-  doPCA(leaves, data);
+  //pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>> VGC;
+  //VGC.setInputCloud (globalPCL);
+  //VGC.setLeafSize (0.01f, 0.01f, 0.01f);
+  //VGC.filter(*filtered_globalPCL);
+  //std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf> leaves = VGC.getLeaves();
+  //std::vector<VoxelData> data;
+  //doPCA(leaves, data);
   //transform local pointcloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr temp_transformed_localPCL = transform_PCL(localPCL, si);
 
-  printPCD(globalPCL);
+  //printPCD(globalPCL);
 //	cout<<"transform 1"<<endl;
   //cout<<globalPCL->points[0]<<endl<<temp_transformed_localPCL->points[0]<<endl<<localPCL->points[0]<<endl;
 
@@ -540,7 +566,7 @@ int main ()
     std::vector<std::pair<int,int>> corres_set = findCorrespondences(globalKDTree, transformed_localPCL, th, th_max, th_min);
     cout<<corres_set.size()<<endl;
     std::vector<std::pair<int,int>> corres_set_ref;
-    RefineCorresSet(corres_set, corres_set_ref);
+    //RefineCorresSet(corres_set, corres_set_ref);
 
     //pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_localPCL = transform_PCL(localPCL, temp);    
     Sim3 temp1 = findSimilarityTrans(globalPCL, transformed_localPCL, corres_set);
@@ -554,8 +580,8 @@ int main ()
 
   	std::cout<<temp<<std::endl;
   }
-cout<<globalPCL->points[60871].x<<"  "<<globalPCL->points[60871].y<<"  "<<globalPCL->points[60871].z<<endl<<endl;
-cout<<globalPCL->points[60872].x<<"  "<<globalPCL->points[60872].y<<"  "<<globalPCL->points[60872].z<<endl<<endl;
+//cout<<globalPCL->points[60871].x<<"  "<<globalPCL->points[60871].y<<"  "<<globalPCL->points[60871].z<<endl<<endl;
+//cout<<globalPCL->points[60872].x<<"  "<<globalPCL->points[60872].y<<"  "<<globalPCL->points[60872].z<<endl<<endl;
   //final transformation out is temp
 
   return (0);
