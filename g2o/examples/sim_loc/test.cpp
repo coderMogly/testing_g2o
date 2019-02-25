@@ -95,13 +95,16 @@ void Sim_trans::setscale(float &_scale){
 
 */
 
+int MIN_POINTS = 100;
+float MULTIPLE = 5;
 
-/*class VoxelData{
-	Eigen::Matrix3d matK;
+class VoxelData{
+public:
+	Eigen::Matrix4d matK;
 	Eigen::Vector3d sigma;
 	int numPoints;
-	pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf* leafPTR;
-};*/
+	const pcl::VoxelGridCovariance<pcl::PointXYZ>::Leaf* leafPTR;
+};
 
 
 
@@ -398,14 +401,14 @@ void printPCD(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
     	cout<<endl<<" x:"<<cloud->points[i].x<<" y:"<<cloud->points[i].y<<" z:"<<cloud->points[i].z<<endl;
   	}
 }
-/*
 
-void doPCA(std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf> &leaves, std::vector<VoxelData> &data){
-	std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf>::iterator it;
-	for(it = leaves.begin(); it !=leaves.end(); it++){
+/*
+void doPCA(const std::map<long unsigned int, pcl::VoxelGridCovariance<pcl::PointXYZ>::Leaf> &leaves, std::vector<VoxelData> &data){
+	std::map<long unsigned int, pcl::VoxelGridCovariance<pcl::PointXYZ>::Leaf>::const_iterator itr;
+	for(itr = leaves.begin(); itr !=leaves.end(); itr++){
 		VoxelData temp;
 		Eigen::Vector3d mean = itr->second.getMean();
-		Eigen::Matrix3d evecs = itr->second.getEvacs();
+		Eigen::Matrix3d evecs = itr->second.getEvecs();
 		Eigen::Matrix3d temp_cov = itr->second.getCov();
 		Eigen::Matrix4d cov;
 		Eigen::Matrix4d A;
@@ -441,18 +444,29 @@ void doPCA(std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>
   		cov(1,3)=0;
   		cov(2,3)=0;
   		cov(3,3)=1;
-  		A = (temp.TR)*cov*(Eigen::Transpose(temp.TR));
+  		A = ((temp.matK)*cov)*((temp.matK).transpose());
   		temp.sigma(0) = sqrt(A(0,0));
   		temp.sigma(1) = sqrt(A(1,1));
   		temp.sigma(2) = sqrt(A(2,2));
   		temp.numPoints = itr->second.getPointCount();
-  		temp.leafPTR = it;
+  		temp.leafPTR = &(itr->second);
   		data.push_back(temp);
 	}
 }
 
+bool isless(pcl::PointXYZ p, float M, Eigen::Vector3d a){
+  if(p.x < M*a[0]){
+    if(p.y < M*a[1]){
+      if(p.z < M*a[2]){
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
-RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pair<int,int>> &corres_set_ref, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>> &VGC, std::vector<VoxelData> &data, pcl::PointCloud<pcl::PointXYZ>::Ptr &globalPCL, pcl::PointCloud<pcl::PointXYZ>::Ptr &localPCL){
+
+void RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pair<int,int>> &corres_set_ref, pcl::VoxelGridCovariance<pcl::PointXYZ> &VGC, std::vector<VoxelData> &data, pcl::PointCloud<pcl::PointXYZ>::Ptr &globalPCL, pcl::PointCloud<pcl::PointXYZ>::Ptr &localPCL){
   int flag_number = 0;
   int flag_cov = 0;
 	for(int i = 0; i<corres_set.size(); i++){
@@ -460,7 +474,7 @@ RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pa
     flag_number = 0;
 		pcl::PointXYZ temp_point = globalPCL->points[corres_set[i].first];
     pcl::PointXYZ temp_point_loc = localPCL->points[corres_set[i].second];
-    pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf* temp_leaf = VGC.getLeaf(temp_point);
+    const pcl::VoxelGridCovariance<pcl::PointXYZ>::Leaf* temp_leaf = VGC.getLeaf(temp_point);
     std::vector<VoxelData>::iterator it;
     for(it = data.begin();it!=data.end();it++){
       if(temp_leaf == it->leafPTR){
@@ -470,7 +484,7 @@ RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pa
     if(it->numPoints > MIN_POINTS){
       flag_number = 1;
     }
-    if(isless(temp_point_loc, MULTIPLE, it->A)){
+    if(isless(temp_point_loc, MULTIPLE, it->sigma)){
       flag_cov = 1;
     }
     if(flag_cov && flag_number){
@@ -481,8 +495,8 @@ RefineCorresSet(std::vector<std::pair<int,int>> &corres_set, std::vector<std::pa
 	}
 }
 
-
 */
+
 
 
 int main ()
@@ -491,11 +505,11 @@ int main ()
   float th = 0;
   float th_max = 0;
   float th_min = 0;
-  float iter = 100;
+  float iter = 10;
   g2o::Quaternion q;
   q.setIdentity();
   Eigen::Vector3d tran(0,0,0);
-  float scale = 1;
+  float scale = 10;
   Sim3 si(q, tran, scale);
 
   //enter global pcd filename here 
@@ -507,7 +521,7 @@ int main ()
 
   //enter local pcd filename here
   std::string lo_filename = "./localPCD.pcd";
-  pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL = loadPCL(lo_filename);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL_1 = loadPCL(lo_filename);
 
 /*
   Eigen::Matrix4f transform_1 = Eigen::Matrix4f::Identity();
@@ -532,17 +546,29 @@ int main ()
 
   pcl::transformPointCloud(*localPCL_1, *localPCL, transform_1); 
 
-  pcl::io::savePCDFileASCII ("test_pcd.pcd", *localPCL);
 
 */
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr localPCL = transform_PCL(localPCL_1, si);
+  pcl::io::savePCDFileASCII ("test_pcd.pcd", *localPCL);
+ 
+
+
+
   //voxelize the pointcloud
-  //pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>> VGC;
-  //VGC.setInputCloud (globalPCL);
-  //VGC.setLeafSize (0.01f, 0.01f, 0.01f);
-  //VGC.filter(*filtered_globalPCL);
-  //std::map<int, pcl::VoxelGridCovariance<pcl::PointCloud<pcl::PointXYZ>>::Leaf> leaves = VGC.getLeaves();
-  //std::vector<VoxelData> data;
-  //doPCA(leaves, data);
+  
+/*
+  pcl::VoxelGridCovariance<pcl::PointXYZ> VGC;
+  VGC.setInputCloud (globalPCL);
+  VGC.setLeafSize (0.01f, 0.01f, 0.01f);
+  VGC.filter(*filtered_globalPCL);
+  const std::map<long unsigned int, pcl::VoxelGridCovariance<pcl::PointXYZ>::Leaf>& leaves = VGC.getLeaves();
+  std::vector<VoxelData> data;
+  doPCA(leaves, data);*/
+
+
+
+/*
   //transform local pointcloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr temp_transformed_localPCL = transform_PCL(localPCL, si);
 
@@ -583,6 +609,6 @@ int main ()
 //cout<<globalPCL->points[60871].x<<"  "<<globalPCL->points[60871].y<<"  "<<globalPCL->points[60871].z<<endl<<endl;
 //cout<<globalPCL->points[60872].x<<"  "<<globalPCL->points[60872].y<<"  "<<globalPCL->points[60872].z<<endl<<endl;
   //final transformation out is temp
-
+*/
   return (0);
 }

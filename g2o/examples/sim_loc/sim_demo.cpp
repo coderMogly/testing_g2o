@@ -26,6 +26,8 @@
 #include "g2o/types/slam3d/se3_ops.h"
 #include "g2o/stuff/misc.h"
 
+#include <pcl/filters/voxel_grid_covariance.h>
+
 using namespace Eigen;
 using namespace std;
 using namespace g2o;
